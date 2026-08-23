@@ -19,6 +19,10 @@
    Redis cache layer, rate limiting, `Product`/`SearchResponse` models,
    `mcp/tools.py` placeholder, plain HTML/JS frontend, Dockerfile +
    docker-compose. No real SerpAPI key wired up/tested yet — logic only.
+7. 2026-08-22 — Alex Nguyen — Added a `/test` placeholder page
+   (`frontend/test/index.html`, served via the existing
+   `StaticFiles(html=True)` mount) and wired a "Test page" button in the
+   frontend to navigate to it; the page itself does nothing yet.
 
 ## What's next
 **Wire up a real `.env` (SerpAPI key) and run the stack via
