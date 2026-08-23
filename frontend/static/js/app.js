@@ -4,6 +4,11 @@ const form = document.getElementById("search-form");
 const input = document.getElementById("search-input");
 const status = document.getElementById("status");
 const results = document.getElementById("results");
+const testPageButton = document.getElementById("test-page-button");
+
+testPageButton.addEventListener("click", () => {
+  window.location.href = "/test";
+});
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
