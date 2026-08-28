@@ -6,10 +6,12 @@ const status = document.getElementById("status");
 const results = document.getElementById("results");
 const testPageButton = document.getElementById("test-page-button");
 
-// Marketplace-feature scaffold — filters/sort/pagination. None of this
-// talks to the backend yet: /api/search takes only `q`. These exist so
-// the UI has something to wire real params into once the API supports
-// them, instead of building the controls and the API logic in lockstep.
+// Marketplace-feature scaffold — filters/sort/pagination.
+// price_min/price_max/sort are wired to /api/search (see search_service.py).
+// category is still a no-op: SerpAPI's normalized results don't carry a
+// category field, so there's nothing on the backend to filter by yet
+// (the <select> is disabled below for that reason). Pagination is also
+// still unwired — /api/search returns one unpaginated batch of results.
 const categorySelect = document.getElementById("filter-category");
 const priceMinInput = document.getElementById("filter-price-min");
 const priceMaxInput = document.getElementById("filter-price-max");
@@ -19,38 +21,41 @@ const prevPageButton = document.getElementById("prev-page");
 const nextPageButton = document.getElementById("next-page");
 const pageIndicator = document.getElementById("page-indicator");
 
-let lastResults = null; // last successful search response, for future client-side testing
+categorySelect.disabled = true;
+categorySelect.title = "Not wired to the API yet — results have no category data";
+
+let lastResults = null; // last successful search response
 
 testPageButton.addEventListener("click", () => {
   window.location.href = "/test";
 });
 
-applyFiltersButton.addEventListener("click", () => {
-  const filters = {
-    category: categorySelect.value || null,
-    priceMin: priceMinInput.value ? Number(priceMinInput.value) : null,
-    priceMax: priceMaxInput.value ? Number(priceMaxInput.value) : null,
-    sort: sortSelect.value,
-  };
-  console.log("Filters selected (stub — not sent to backend yet):", filters);
-  status.textContent = lastResults
-    ? "Filters/sort are captured but not applied yet — /api/search has no filter params."
-    : "Run a search first, then filters can be tested against the results.";
-});
-
-// Pagination buttons stay disabled — /api/search returns one unpaginated
-// batch of results, so there's nothing to page through yet.
-
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const query = input.value.trim();
   if (!query) return;
+  await runSearch(query);
+});
 
+applyFiltersButton.addEventListener("click", () => {
+  const query = input.value.trim();
+  if (!query) {
+    status.textContent = "Enter a search query first — Apply re-runs it with the current filters/sort.";
+    return;
+  }
+  runSearch(query);
+});
+
+async function runSearch(query) {
   status.textContent = "Searching...";
   results.innerHTML = "";
 
+  const params = new URLSearchParams({ q: query, sort: sortSelect.value });
+  if (priceMinInput.value) params.set("price_min", priceMinInput.value);
+  if (priceMaxInput.value) params.set("price_max", priceMaxInput.value);
+
   try {
-    const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+    const response = await fetch(`/api/search?${params.toString()}`);
     if (!response.ok) {
       throw new Error(`Request failed: ${response.status}`);
     }
@@ -59,7 +64,7 @@ form.addEventListener("submit", async (event) => {
   } catch (err) {
     status.textContent = `Error: ${err.message}`;
   }
-});
+}
 
 function renderResults(data) {
   lastResults = data;
