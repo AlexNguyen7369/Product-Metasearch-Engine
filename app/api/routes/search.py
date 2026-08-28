@@ -27,5 +27,6 @@ async def search(
     price_min: Optional[float] = Query(None, ge=0, description="Minimum price filter"),
     price_max: Optional[float] = Query(None, ge=0, description="Maximum price filter"),
     sort: SortOption = Query("relevance", description="Sort order for results"),
+    page: int = Query(1, ge=1, description="1-indexed page of results"),
 ):
-    return await search_products(q, price_min=price_min, price_max=price_max, sort=sort)
+    return await search_products(q, price_min=price_min, price_max=price_max, sort=sort, page=page)

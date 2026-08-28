@@ -28,3 +28,6 @@ class SearchResponse(BaseModel):
     query: str
     cached: bool
     results: list[Product]
+    page: int = 1
+    page_size: int = 10
+    total: int = 0  # count after filtering, before pagination — lets clients page through it

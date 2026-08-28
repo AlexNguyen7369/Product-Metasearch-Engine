@@ -7,11 +7,11 @@ const results = document.getElementById("results");
 const testPageButton = document.getElementById("test-page-button");
 
 // Marketplace-feature scaffold — filters/sort/pagination.
-// price_min/price_max/sort are wired to /api/search (see search_service.py).
-// category is still a no-op: SerpAPI's normalized results don't carry a
-// category field, so there's nothing on the backend to filter by yet
-// (the <select> is disabled below for that reason). Pagination is also
-// still unwired — /api/search returns one unpaginated batch of results.
+// price_min/price_max/sort/page are all wired to /api/search (see
+// search_service.py). category is still a no-op: SerpAPI's normalized
+// results don't carry a category field, so there's nothing on the
+// backend to filter by yet (the <select> is disabled below for that
+// reason).
 const categorySelect = document.getElementById("filter-category");
 const priceMinInput = document.getElementById("filter-price-min");
 const priceMaxInput = document.getElementById("filter-price-max");
@@ -25,6 +25,7 @@ categorySelect.disabled = true;
 categorySelect.title = "Not wired to the API yet — results have no category data";
 
 let lastResults = null; // last successful search response
+let currentQuery = ""; // query behind the currently displayed page, for Prev/Next
 
 testPageButton.addEventListener("click", () => {
   window.location.href = "/test";
@@ -34,7 +35,7 @@ form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const query = input.value.trim();
   if (!query) return;
-  await runSearch(query);
+  await runSearch(query, 1);
 });
 
 applyFiltersButton.addEventListener("click", () => {
@@ -43,14 +44,27 @@ applyFiltersButton.addEventListener("click", () => {
     status.textContent = "Enter a search query first — Apply re-runs it with the current filters/sort.";
     return;
   }
-  runSearch(query);
+  runSearch(query, 1); // a new filter/sort combination starts back at page 1
 });
 
-async function runSearch(query) {
+prevPageButton.addEventListener("click", () => {
+  if (lastResults && lastResults.page > 1) {
+    runSearch(currentQuery, lastResults.page - 1);
+  }
+});
+
+nextPageButton.addEventListener("click", () => {
+  if (lastResults) {
+    runSearch(currentQuery, lastResults.page + 1);
+  }
+});
+
+async function runSearch(query, page) {
+  currentQuery = query;
   status.textContent = "Searching...";
   results.innerHTML = "";
 
-  const params = new URLSearchParams({ q: query, sort: sortSelect.value });
+  const params = new URLSearchParams({ q: query, sort: sortSelect.value, page: String(page) });
   if (priceMinInput.value) params.set("price_min", priceMinInput.value);
   if (priceMaxInput.value) params.set("price_max", priceMaxInput.value);
 
@@ -68,7 +82,12 @@ async function runSearch(query) {
 
 function renderResults(data) {
   lastResults = data;
-  status.textContent = `${data.results.length} result(s)${data.cached ? " (cached)" : ""}`;
+  const totalPages = Math.max(1, Math.ceil(data.total / data.page_size));
+  pageIndicator.textContent = `Page ${data.page} of ${totalPages}`;
+  prevPageButton.disabled = data.page <= 1;
+  nextPageButton.disabled = data.page >= totalPages;
+
+  status.textContent = `${data.total} result(s)${data.cached ? " (cached)" : ""}`;
 
   results.innerHTML = data.results
     .map((product) => `
