@@ -31,14 +31,19 @@
    it live: confirmed the real SerpAPI key works (40 normalized results
    for "wireless mouse") and that a repeat query is served from Redis
    (cached=True, 0.00s vs 4.43s live).
+10. 2026-08-28 — Alex Nguyen — Wired `price_min`, `price_max`, and `sort`
+    (relevance/price-asc/price-desc/rating-desc) query params to
+    `/api/search`, applied in `search_service.py` after the cache lookup;
+    verified live against the real API on both a fresh call and a cache
+    hit. `category` stays unwired and its `<select>` is now disabled — no
+    provider currently supplies category data to filter by.
 
 ## What's next
-**Wire the filters/sort/pagination scaffold up to `/api/search`:** add
-`category`, `price_min`, `price_max`, `sort`, and pagination params to the
-route and implement the corresponding logic in `search_service.py` (and
-`serpapi_provider.py` where the query itself needs to change).
+**Wire pagination to `/api/search`:** add page/offset params to the route
+and `search_service.py`, and enable the existing Prev/Next buttons and
+page indicator in the frontend to use them.
 
-**Why this is next:** the frontend controls for these already exist
-(entry 8) and the core search path is now verified working end-to-end
-(entry 9), so this is the next unblocked piece of real functionality —
-everything needed to build it is now proven to work.
+**Why this is next:** it's the one remaining half of the filters/sort/
+pagination scaffold (entry 8) still not connected to the backend, and the
+price_min/price_max/sort work just done (entry 10) establishes the exact
+pattern (route param → `search_service.py` → frontend) to repeat for it.
