@@ -27,16 +27,18 @@
    marketplace features: an inert filters panel (category, price
    min/max, sort) and a disabled pagination bar on the search page,
    wired with IDs/handlers but not connected to `/api/search` yet.
+9. 2026-08-28 — Alex Nguyen — Added `scripts/test_search_e2e.py` and ran
+   it live: confirmed the real SerpAPI key works (40 normalized results
+   for "wireless mouse") and that a repeat query is served from Redis
+   (cached=True, 0.00s vs 4.43s live).
 
 ## What's next
-**Wire up a real `.env` (SerpAPI key) and run the stack via
-`docker-compose up`** to verify the scaffold actually works end-to-end: a
-search hits SerpAPI on a cache miss, normalizes results, serves them to the
-frontend, and a repeat search is served from Redis instead.
+**Wire the filters/sort/pagination scaffold up to `/api/search`:** add
+`category`, `price_min`, `price_max`, `sort`, and pagination params to the
+route and implement the corresponding logic in `search_service.py` (and
+`serpapi_provider.py` where the query itself needs to change).
 
-**Why this is next:** everything written so far compiles but has never
-actually talked to SerpAPI or Redis. Validating the real request/response
-shape now — especially how `google_shopping` really populates `stock`,
-`rating`, and `shipping` — will likely surface normalization edge cases
-that are cheaper to fix before more features (the filters/sort/pagination
-UI just scaffolded, MCP tools) get built on top of `search_service.py`.
+**Why this is next:** the frontend controls for these already exist
+(entry 8) and the core search path is now verified working end-to-end
+(entry 9), so this is the next unblocked piece of real functionality —
+everything needed to build it is now proven to work.
