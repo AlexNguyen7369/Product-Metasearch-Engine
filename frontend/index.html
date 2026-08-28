@@ -13,8 +13,53 @@
       <input id="search-input" type="text" placeholder="Search for a product..." required />
       <button type="submit">Search</button>
     </form>
+
+    <!--
+      Scaffold only: these controls are not wired to the backend yet
+      (/api/search takes no filter/sort/page params). They exist so
+      future marketplace features have UI to test against without
+      another round of frontend plumbing. See app.js for the stub
+      handlers.
+    -->
+    <div id="filters-panel">
+      <label>
+        Category
+        <select id="filter-category">
+          <option value="">All</option>
+          <option value="electronics">Electronics</option>
+          <option value="clothing">Clothing</option>
+          <option value="home">Home</option>
+        </select>
+      </label>
+      <label>
+        Min price
+        <input id="filter-price-min" type="number" min="0" placeholder="0" />
+      </label>
+      <label>
+        Max price
+        <input id="filter-price-max" type="number" min="0" placeholder="Any" />
+      </label>
+      <label>
+        Sort by
+        <select id="sort-select">
+          <option value="relevance">Relevance</option>
+          <option value="price-asc">Price: Low to High</option>
+          <option value="price-desc">Price: High to Low</option>
+          <option value="rating-desc">Rating</option>
+        </select>
+      </label>
+      <button id="apply-filters" type="button">Apply</button>
+    </div>
+
     <p id="status"></p>
     <div id="results"></div>
+
+    <div id="pagination">
+      <button id="prev-page" type="button" disabled>Prev</button>
+      <span id="page-indicator">Page 1</span>
+      <button id="next-page" type="button" disabled>Next</button>
+    </div>
+
     <button id="test-page-button" type="button">Test page</button>
   </main>
   <script src="/static/js/app.js"></script>
