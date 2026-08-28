@@ -37,13 +37,20 @@
     verified live against the real API on both a fresh call and a cache
     hit. `category` stays unwired and its `<select>` is now disabled — no
     provider currently supplies category data to filter by.
+11. 2026-08-28 — Alex Nguyen — Wired pagination to `/api/search`: `page`
+    query param, `SearchResponse.page/page_size/total`, in-process slicing
+    in `search_service.py`, and the frontend Prev/Next buttons + page
+    indicator now use it. Verified live against the real API (contiguous
+    pages, stable total, correct behavior past the last page).
 
 ## What's next
-**Wire pagination to `/api/search`:** add page/offset params to the route
-and `search_service.py`, and enable the existing Prev/Next buttons and
-page indicator in the frontend to use them.
+**Build the MCP tool wrapper in `app/mcp/tools.py`**, per the commented-out
+plan already in that file: a thin `search_products_tool()` wrapping
+`search_products(query, price_min, price_max, sort, page)` and returning
+`result.model_dump()`.
 
-**Why this is next:** it's the one remaining half of the filters/sort/
-pagination scaffold (entry 8) still not connected to the backend, and the
-price_min/price_max/sort work just done (entry 10) establishes the exact
-pattern (route param → `search_service.py` → frontend) to repeat for it.
+**Why this is next:** `search_products()`'s signature is now feature-complete
+and proven against the real API (query, price/sort filtering, pagination —
+entries 9-11), which was the stated precondition in `stack.md` for the MCP
+migration; `category` is the only piece intentionally left out, and it's
+blocked on provider support rather than on anything MCP-related.
