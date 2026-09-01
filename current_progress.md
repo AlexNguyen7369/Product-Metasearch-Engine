@@ -48,15 +48,23 @@
     `mcp>=2.0` to `requirements.txt`, and wrote `mcp.md` explaining the
     concepts. Verified live against the real API — `list_tools()` and
     `call_tool()` both work and return results matching `/api/search`.
+13. 2026-09-01 — Alex Nguyen — Added MCP-side rate limiting: a per-process
+    `FixedWindowRateLimiter` (via `limits`, reusing `settings.rate_limit`)
+    in `app/core/rate_limit.py`, checked in `search_products_tool` before
+    calling `search_products()`, raising the SDK's `ToolError` so the
+    message reaches the client. Verified against the real protocol
+    handler (`_handle_call_tool`) with `RATE_LIMIT=2/minute`: calls 1-2
+    succeeded, 3-4 correctly returned `is_error=True`.
 
 ## What's next
-**Add MCP-side rate limiting** to `app/mcp/server.py`/`tools.py` — an
-equivalent to `slowapi`'s per-IP limit on `/api/search`, since the
-`slowapi` limiter is HTTP middleware and does not apply to MCP tool calls.
+**Verify the MCP server over a real stdio round trip** — connect an
+actual MCP `ClientSession` (from the `mcp` SDK) to `app/mcp/server.py` as
+a spawned subprocess, rather than calling its internal handler methods
+in-process, to confirm the JSON-RPC/stdio framing itself works end-to-end.
 
-**Why this is next:** flagged explicitly as an open gap in `mcp.md` — an
-MCP client can currently call `search_products_tool` at unlimited
-frequency, and every cache miss still bills SerpAPI. `stack.md` states
-protecting against that exact cost blowout was the reason `slowapi` was
-added to the HTTP side in the first place; the MCP transport now has the
-same exposure with no equivalent guard.
+**Why this is next:** every MCP verification so far (tool wrapper, rate
+limiting) has called `MCPServer`'s Python methods (`call_tool()`,
+`_handle_call_tool()`) directly in the same process — real, but it never
+actually exercises the stdio transport a genuine client (Claude Desktop,
+Claude Code) would use to talk to `python -m app.mcp.server` as a
+subprocess. That's the one layer of this feature still unverified.
