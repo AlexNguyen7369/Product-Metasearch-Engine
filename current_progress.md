@@ -55,16 +55,24 @@
     message reaches the client. Verified against the real protocol
     handler (`_handle_call_tool`) with `RATE_LIMIT=2/minute`: calls 1-2
     succeeded, 3-4 correctly returned `is_error=True`.
+14. 2026-09-01 — Alex Nguyen — Added `scripts/test_mcp_e2e.py`: spawns
+    `python -m app.mcp.server` as a real subprocess and drives it with the
+    `mcp` SDK's `ClientSession` over actual stdio (real `initialize`
+    handshake, `list_tools()`, `call_tool()`) instead of calling
+    `MCPServer`'s Python methods in-process. Verified live: real search
+    results and the rate limiter's rejection both survive the real wire
+    protocol unchanged.
 
 ## What's next
-**Verify the MCP server over a real stdio round trip** — connect an
-actual MCP `ClientSession` (from the `mcp` SDK) to `app/mcp/server.py` as
-a spawned subprocess, rather than calling its internal handler methods
-in-process, to confirm the JSON-RPC/stdio framing itself works end-to-end.
+**Verify `docker-compose up` actually builds and runs the app end-to-end**
+— the FastAPI + Redis stack has never been run through Docker; every
+local verification so far (entries 9-14) used a manually-run Homebrew
+Redis plus a scratch virtualenv as a substitute, because Docker wasn't
+available in the environment doing the testing.
 
-**Why this is next:** every MCP verification so far (tool wrapper, rate
-limiting) has called `MCPServer`'s Python methods (`call_tool()`,
-`_handle_call_tool()`) directly in the same process — real, but it never
-actually exercises the stdio transport a genuine client (Claude Desktop,
-Claude Code) would use to talk to `python -m app.mcp.server` as a
-subprocess. That's the one layer of this feature still unverified.
+**Why this is next:** `docker-compose.yml`/`Dockerfile` are the documented,
+intended local dev workflow (`stack.md`, `app_structure.md`) and have been
+sitting untested since entry 6 (2026-08-19) — every other major piece
+(search, filters/sort, pagination, MCP) has since been proven against the
+real API, but always bypassing the one thing a new contributor would
+actually run first.
