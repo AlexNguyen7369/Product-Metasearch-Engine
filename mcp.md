@@ -46,11 +46,13 @@ MCP tool       ─┘
 
 - **`app/mcp/tools.py`** — `search_products_tool()`, an `async def` with
   the same parameters as `/api/search`'s query params (`query`,
-  `price_min`, `price_max`, `sort`, `page`). It calls `search_products()`
-  and returns `result.model_dump()` — a plain dict, because MCP tool
-  results cross a process/transport boundary and can't carry a Pydantic
-  model. Per `app_structure.md`'s rule for this folder, it imports only
-  from `app.services` — never `app.api` or `app.providers`.
+  `price_min`, `price_max`, `sort`, `page`). It checks the MCP-side rate
+  limit (below), then calls `search_products()` and returns
+  `result.model_dump()` — a plain dict, because MCP tool results cross a
+  process/transport boundary and can't carry a Pydantic model. Per
+  `app_structure.md`'s rule for this folder, it imports only from
+  `app.services` — plus `app.core`, the same cross-cutting exception
+  `api/routes/search.py` already makes for the HTTP side.
 
 - **`app/mcp/server.py`** — the actual MCP server process. Creates an
   `MCPServer` instance, registers `search_products_tool` on it, and runs
@@ -99,10 +101,32 @@ not wrong, it's the pre-2.0 name.
 **A tool function stays a plain function.** `mcp.tool()(search_products_tool)`
 registers the function *and returns it unchanged* — the decorator's
 effect is entirely in the server's internal tool registry, not in
-wrapping/transforming the function itself. That's why `tools.py` has no
-MCP-specific imports at all: `search_products_tool` is importable and
-directly callable (e.g. from a test, or a script) with no MCP server
-running, the same way `search_products()` always has been.
+wrapping/transforming the function itself. `search_products_tool` is
+importable and directly callable (e.g. from a test, or a script) with no
+MCP server running, the same way `search_products()` always has been —
+only difference from that is the one deliberate `ToolError` import below.
+
+**MCP-side rate limiting.** `slowapi`'s HTTP limiter can't apply here —
+there's no `Request` object, and stdio has no client IP to key on. But a
+stdio server process is already spawned per client/session (this is the
+"one process = one client" property stdio gives for free), so a single
+global counter *per process* is the right-shaped equivalent, not a gap.
+`app/core/rate_limit.py` builds this with `limits` — the same rate-string
+parsing library `slowapi` itself is built on — reusing `settings.rate_limit`
+("10/minute") so both transports are governed by the same configured
+number, just enforced two different ways (per-IP vs per-process).
+
+`search_products_tool` checks it before calling `search_products()`, and
+raises the SDK's `ToolError` (from `mcp.server.mcpserver.exceptions`) on
+rejection rather than a bare exception. That distinction matters: the
+SDK's tool-execution wrapper treats a bare exception as a crash and
+withholds its message from the client ("nothing from an unexpected
+exception reaches the client" — its own docstring's wording), while a
+deliberate `ToolError` is the documented path for a message the client
+*should* see. Both eventually become `CallToolResult(is_error=True, ...)`
+on the wire, but only `ToolError`'s text — here, "Rate limit exceeded.
+Try again in Ns." — survives to the client instead of being replaced with
+a generic message.
 
 ## What did *not* change
 
@@ -115,14 +139,9 @@ now been executed:
   zero edits. The MCP layer only calls in, it never changes what it's
   calling.
 
-And the part still open, as predicted:
+Rate limiting was the one part still open as of the initial MCP wiring;
+it's now closed (see "MCP-side rate limiting" above). What's still open:
 
-- **Rate limiting** — `slowapi`'s limiter is HTTP middleware
-  (`app/core/rate_limit.py`); it does not apply to MCP tool calls. An MCP
-  client can currently call `search_products_tool` at unlimited
-  frequency, each miss still billing SerpAPI. Needs an equivalent
-  throttle before this is exposed to an untrusted MCP client — fine for
-  now since it only runs locally, spawned by a trusted client.
 - **Auth** — none exists on either transport yet, so nothing new is owed
   here specifically because of MCP; noted in case auth gets added to the
   HTTP side first, since it would need a separate mechanism here (MCP
@@ -141,3 +160,11 @@ real, correctly filtered/sorted/paginated results — the same shape
 `/api/search` returns, confirming both transports really do share one
 code path rather than two parallel implementations that happen to agree
 today.
+
+Rate limiting verified by calling the server's actual protocol handler
+(`_handle_call_tool`, the function stdio requests are dispatched through
+— not just the higher-level `call_tool()` convenience method) with
+`RATE_LIMIT=2/minute`: the first 2 calls returned `is_error=False`, the
+3rd and 4th returned `is_error=True` with `content` reading "Error
+executing tool search_products_tool: Rate limit exceeded. Try again in
+60s." — the exact message a real stdio client would receive.
