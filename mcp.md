@@ -168,3 +168,15 @@ Rate limiting verified by calling the server's actual protocol handler
 3rd and 4th returned `is_error=True` with `content` reading "Error
 executing tool search_products_tool: Rate limit exceeded. Try again in
 60s." — the exact message a real stdio client would receive.
+
+All of the above called `MCPServer`'s Python methods directly in the same
+process, though — real, but not proof the actual stdio wire protocol
+works. `scripts/test_mcp_e2e.py` closes that gap: it spawns
+`python -m app.mcp.server` as a genuine subprocess and talks to it with
+the SDK's own `ClientSession` over stdio — a real JSON-RPC `initialize`
+handshake, then `list_tools()`/`call_tool()` exactly as Claude Desktop or
+Claude Code would. Run it (`python scripts/test_mcp_e2e.py`) with the same
+requirements as `scripts/test_search_e2e.py`. Confirmed passing: tool
+discovery, a real search returning correctly-shaped results, and the
+rate limiter's 3rd-call rejection all survive the actual stdio round trip
+unchanged from the in-process behavior above.
