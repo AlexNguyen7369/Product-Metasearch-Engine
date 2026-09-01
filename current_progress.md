@@ -42,15 +42,21 @@
     in `search_service.py`, and the frontend Prev/Next buttons + page
     indicator now use it. Verified live against the real API (contiguous
     pages, stable total, correct behavior past the last page).
+12. 2026-09-01 — Alex Nguyen — Wired up the MCP tool wrapper:
+    `app/mcp/tools.py` (`search_products_tool()`) and `app/mcp/server.py`
+    (stdio `MCPServer`, run via `python -m app.mcp.server`), added
+    `mcp>=2.0` to `requirements.txt`, and wrote `mcp.md` explaining the
+    concepts. Verified live against the real API — `list_tools()` and
+    `call_tool()` both work and return results matching `/api/search`.
 
 ## What's next
-**Build the MCP tool wrapper in `app/mcp/tools.py`**, per the commented-out
-plan already in that file: a thin `search_products_tool()` wrapping
-`search_products(query, price_min, price_max, sort, page)` and returning
-`result.model_dump()`.
+**Add MCP-side rate limiting** to `app/mcp/server.py`/`tools.py` — an
+equivalent to `slowapi`'s per-IP limit on `/api/search`, since the
+`slowapi` limiter is HTTP middleware and does not apply to MCP tool calls.
 
-**Why this is next:** `search_products()`'s signature is now feature-complete
-and proven against the real API (query, price/sort filtering, pagination —
-entries 9-11), which was the stated precondition in `stack.md` for the MCP
-migration; `category` is the only piece intentionally left out, and it's
-blocked on provider support rather than on anything MCP-related.
+**Why this is next:** flagged explicitly as an open gap in `mcp.md` — an
+MCP client can currently call `search_products_tool` at unlimited
+frequency, and every cache miss still bills SerpAPI. `stack.md` states
+protecting against that exact cost blowout was the reason `slowapi` was
+added to the HTTP side in the first place; the MCP transport now has the
+same exposure with no equivalent guard.
