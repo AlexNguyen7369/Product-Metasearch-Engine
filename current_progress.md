@@ -62,17 +62,21 @@
     `MCPServer`'s Python methods in-process. Verified live: real search
     results and the rate limiter's rejection both survive the real wire
     protocol unchanged.
+15. 2026-09-03 — Alex Nguyen — Added `scripts/test_docker_compose_e2e.py`:
+    builds and brings up `api`+`redis` via Compose, then hits the real
+    HTTP API through the container network (fresh search, then a repeat
+    to confirm container-to-container Redis DNS resolves). Docker isn't
+    available in the environment that wrote it, so only the no-Docker
+    failure path and the `.env` key-presence check were actually run —
+    the real build/up/search/teardown sequence is still unverified.
 
 ## What's next
-**Verify `docker-compose up` actually builds and runs the app end-to-end**
-— the FastAPI + Redis stack has never been run through Docker; every
-local verification so far (entries 9-14) used a manually-run Homebrew
-Redis plus a scratch virtualenv as a substitute, because Docker wasn't
-available in the environment doing the testing.
+**Run `scripts/test_docker_compose_e2e.py` on a machine with Docker
+installed** and confirm it actually passes.
 
-**Why this is next:** `docker-compose.yml`/`Dockerfile` are the documented,
-intended local dev workflow (`stack.md`, `app_structure.md`) and have been
-sitting untested since entry 6 (2026-08-19) — every other major piece
-(search, filters/sort, pagination, MCP) has since been proven against the
-real API, but always bypassing the one thing a new contributor would
-actually run first.
+**Why this is next:** the script exists (entry 15) but was written and
+committed without Docker available to run it against, per an explicit
+choice to ship it as-is rather than have that session set up a headless
+Docker (e.g. Colima) to self-verify. `docker-compose up` is still the
+one documented local-dev workflow (`stack.md`, `app_structure.md`,
+untested since entry 6) that has never actually been proven to work.
